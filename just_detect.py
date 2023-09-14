@@ -19,6 +19,8 @@ def generate_random_colors(num_colors):
 # Get object class dict
 with open(r'D:\Coding\Thesis\sort\object_dict.txt', 'r') as file:
     color_mapping = file.read()
+    
+colors = generate_random_colors(len(color_mapping))  # Generate random colors based on the number of classes
 
 # Initialize YOLO model
 model = YOLO('yolov8n.pt')
@@ -39,7 +41,6 @@ fourcc = cv2.VideoWriter_fourcc(*'XVID')
 out = cv2.VideoWriter(output_video_path, fourcc, 30.0, (width, height))
 
 
-
 # Create and open a CSV file for writing tracking results
 with open('just_detect_results.csv', mode='w', newline='') as csv_file:
     fieldnames = ['FrameNumber', 'ObjectID', 'X', 'Y', 'Width', 'Height', 'Confidence', 'Class']
@@ -57,16 +58,12 @@ with open('just_detect_results.csv', mode='w', newline='') as csv_file:
         for box, conf in zip(boxes, confs):
             b = box.xyxy[0].tolist()
             c = conf.tolist()
-            b.append(c[0])
-            detections.append(b)
-            classes.append(c[1])
-    
-        colors = generate_random_colors(len(color_mapping))  # Generate random colors based on the number of classes
-
-        for (xmin, ymin, xmax, ymax, _), class_index in zip(detections, classes):
-            xmin, ymin, xmax, ymax = int(xmin), int(ymin), int(xmax), int(ymax)
+            xmin, ymin, xmax, ymax = map(int, b)
+            class_index = int(c[1])
+            confidence = c[0]
+            
             class_name = f"Class {class_index}"  # Replace with your actual class names or labels
-            color = colors[int(class_index)] if class_index < len(colors) else (0, 0, 0)  # Get a random color for the class
+            color = colors[class_index] if class_index < len(colors) else (0, 0, 0)  # Get a random color for the class
             cv2.rectangle(image, (xmin, ymin), (xmax, ymax), color, 2)
             cv2.putText(image, class_name, (xmin, ymin - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
         
@@ -78,7 +75,7 @@ with open('just_detect_results.csv', mode='w', newline='') as csv_file:
                 'Y': ymin,
                 'Width': xmax - xmin,
                 'Height': ymax - ymin,
-                'Confidence': c[0],  # Use the confidence from YOLO results
+                'Confidence': confidence,  # Use the confidence from YOLO results
                 'Class': class_name
             })
 

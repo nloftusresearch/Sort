@@ -17,7 +17,7 @@ def get_ground_truth(ground_truth_file):
             width = int(parts[4])
             height = int(parts[5])
             class_id = int(parts[7])  # Assuming class information is in the 8th column
-            confidence = 1.0  # You can set a default confidence value
+            confidence = 0.5  # Default confidence value
 
             if frame_number not in gt:
                 gt[frame_number] = []
