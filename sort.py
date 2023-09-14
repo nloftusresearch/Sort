@@ -18,6 +18,7 @@
 from __future__ import print_function
 
 import os
+from xmlrpc.client import Unmarshaller
 import numpy as np
 import matplotlib
 matplotlib.use('TkAgg')
@@ -233,11 +234,13 @@ class Sort(object):
 
     # update matched trackers with assigned detections
     for m in matched:
-      self.trackers[m[1]].update(dets[m[0], :])
+        # self.trackers[m[1]].update(dets[m[0], :])
+        self.trackers[m[1]].update(dets[m[0]])
 
     # create and initialise new trackers for unmatched detections
     for i in unmatched_dets:
-        trk = KalmanBoxTracker(dets[i,:])
+        trk = KalmanBoxTracker(dets[i])
+        # trk = trk = KalmanBoxTracker(dets[i,:])
         self.trackers.append(trk)
     i = len(self.trackers)
     for trk in reversed(self.trackers):
