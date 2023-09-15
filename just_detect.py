@@ -5,6 +5,7 @@ from ultralytics import YOLO
 import random
 import csv
 
+print("Just Detect")
 
 def generate_random_colors(num_colors):
     random.seed(42)  # Set a seed for reproducibility
@@ -16,9 +17,17 @@ def generate_random_colors(num_colors):
         colors.append((r, g, b))
     return colors
 
-# Get object class dict
+# Read the raw text from the file
 with open(r'D:\Coding\Thesis\sort\object_dict.txt', 'r') as file:
-    color_mapping = file.read()
+    raw_text = file.read()
+
+# Find the part of the text that represents the dictionary (remove variable name)
+start_index = raw_text.find('{')
+end_index = raw_text.rfind('}')
+dictionary_text = raw_text[start_index:end_index + 1]
+
+# Use eval to convert the dictionary text into a dictionary
+color_mapping = eval(dictionary_text)
     
 colors = generate_random_colors(len(color_mapping))  # Generate random colors based on the number of classes
 
@@ -47,36 +56,40 @@ with open('just_detect_results.csv', mode='w', newline='') as csv_file:
     writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
     writer.writeheader()
 
+    # Implement fake obj id counter
+    obj_id = 0
+    
     for image_path in image_folder.iterdir():
         image = cv2.imread(str(image_path))
         results = model.predict(image)[0]
     
-        detections = []
         boxes = results.boxes
         confs = boxes.data[:, 4:6]
         classes = []
+        
         for box, conf in zip(boxes, confs):
             b = box.xyxy[0].tolist()
             c = conf.tolist()
             xmin, ymin, xmax, ymax = map(int, b)
-            class_index = int(c[1])
+            class_index = int(c[1])+1
             confidence = c[0]
             
-            class_name = f"Class {class_index}"  # Replace with your actual class names or labels
+            class_name = f"Class {color_mapping[class_index]}"  # Replace with your actual class names or labels
             color = colors[class_index] if class_index < len(colors) else (0, 0, 0)  # Get a random color for the class
             cv2.rectangle(image, (xmin, ymin), (xmax, ymax), color, 2)
             cv2.putText(image, class_name, (xmin, ymin - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-        
+            
+            obj_id += 1
             # Write the tracking result to the CSV file
             writer.writerow({
                 'FrameNumber': image_path.stem,  # Assuming frame numbers are the image file names without extension
-                'ObjectID': int(class_index),  # Cast class_index to int for ObjectID
+                'ObjectID': int(obj_id),  # Cast class_index to int for ObjectID
                 'X': xmin,
                 'Y': ymin,
                 'Width': xmax - xmin,
                 'Height': ymax - ymin,
-                'Confidence': confidence,  # Use the confidence from YOLO results
-                'Class': class_name
+                'Confidence': float(confidence),  # Use the confidence from YOLO results
+                'Class': class_index
             })
 
         # Write the frame with bounding boxes to the output video

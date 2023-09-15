@@ -8,6 +8,8 @@ import random
 from motmetrics import metrics, utils  # Import motmetrics modules
 import csv
 
+print("Detect and Sort")
+
 # Define a function to generate random colors
 def generate_random_colors(num_colors):
     random.seed(42)  # Set a seed for reproducibility
@@ -20,9 +22,17 @@ def generate_random_colors(num_colors):
     return colors
 
 
-# Get object class dict
+# Read the raw text from the file
 with open(r'D:\Coding\Thesis\sort\object_dict.txt', 'r') as file:
-    color_mapping = file.read()
+    raw_text = file.read()
+
+# Find the part of the text that represents the dictionary (remove variable name)
+start_index = raw_text.find('{')
+end_index = raw_text.rfind('}')
+dictionary_text = raw_text[start_index:end_index + 1]
+
+# Use eval to convert the dictionary text into a dictionary
+color_mapping = eval(dictionary_text)
     
 colors = generate_random_colors(len(color_mapping))  # Generate random colors based on the number of classes
 
@@ -62,33 +72,35 @@ with open('detect_and_sort_results.csv', mode='w', newline='') as csv_file:
         boxes = results.boxes
         confs = boxes.data[:, 4:6]
         classes = []
+        
         for box, conf in zip(boxes, confs):
             b = box.xyxy[0].tolist()
             c = conf.tolist()
             b.append(c[0])
             detections.append(b)
-            classes.append(c[1])
         track_bbs_ids = mot_tracker.update(detections)
-        print(track_bbs_ids)
+       
 
-        for (xmin, ymin, xmax, ymax, obj_id), class_index in zip(track_bbs_ids, classes):
+        for (xmin, ymin, xmax, ymax, obj_id), (confidence, class_index)  in zip(track_bbs_ids, confs):
+            class_index = int(class_index) + 1
             xmin, ymin, xmax, ymax = int(xmin), int(ymin), int(xmax), int(ymax)
-            class_name = f"Class {color_mapping[int(class_index)]}"  # Cast class_index to int for class name
-            object_id_and_class = f"Object ID: {int(obj_id)}, {class_name}"  # Concatenate Object ID and Class
-            color = colors[int(class_index)] if class_index < len(colors) else (0, 0, 0)  # Get a random color for the class
+            class_name = f"Class {color_mapping[class_index]}"  # Cast class_index to int for class name
+
+            object_id_and_class = f"{class_name}: {confidence:.3f}"  # Concatenate Object ID and Confidence
+            color = colors[int(class_index)] if class_index < len(colors) else (0, 0, 0)
             cv2.rectangle(image, (xmin, ymin), (xmax, ymax), color, 2)
             cv2.putText(image, object_id_and_class, (xmin, ymin - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-    
+                            
             # Write the tracking result to the CSV file
             writer.writerow({
                 'FrameNumber': image_path.stem,  # Assuming frame numbers are the image file names without extension
-                'ObjectID': int(class_index),  # Cast class_index to int for ObjectID
+                'ObjectID': int(obj_id),  # Cast class_index to int for ObjectID
                 'X': xmin,
                 'Y': ymin,
                 'Width': xmax - xmin,
                 'Height': ymax - ymin,
-                'Confidence': c[0],  # Use the confidence from YOLO results
-                'Class': class_name
+                'Confidence': float(confidence),  # Use the confidence from YOLO results
+                'Class': class_index
             })
 
         # Write the frame with bounding boxes to the output video

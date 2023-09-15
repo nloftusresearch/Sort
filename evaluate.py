@@ -1,4 +1,5 @@
 from asyncio.proactor_events import _ProactorBasePipeTransport
+from traceback import StackSummary
 from motmetrics import metrics, utils
 import csv
 import numpy as np
@@ -16,8 +17,9 @@ def get_ground_truth(ground_truth_file):
             y = int(parts[3])
             width = int(parts[4])
             height = int(parts[5])
-            class_id = int(parts[7])  # Assuming class information is in the 8th column
-            confidence = 0.5  # Default confidence value
+            confidence = float(parts[6])
+            class_id = int(parts[7])
+            
 
             if frame_number not in gt:
                 gt[frame_number] = []
@@ -120,9 +122,6 @@ mh = metrics.create()
 summary = mh.compute(acc, metrics=['num_frames', 'num_false_positives', 'num_misses', 'num_switches', 'num_objects', 'mota', 'motp'], name='acc')
 
 # Print the summary of tracking metrics
-print(summary)
-
-
-
-
-
+for key, value in summary.items():
+    print(key)
+    print(f"{value[0]}\n")
