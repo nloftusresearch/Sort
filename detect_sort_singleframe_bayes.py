@@ -7,76 +7,70 @@ import numpy as np
 import random
 from motmetrics import metrics, utils  # Import motmetrics modules
 import csv
-from sklearn.naive_bayes import GaussianNB
+from scipy.stats import beta
 
 
 print("Detect and Sort with Naive Bayes")
 
-def naive_bayes(track_bbs_ids, confs, massive_object_dictionary):
-    """
-    Implement naive bayes with class predictions and their associated confidences
-    to make a final class prediction with an associated confidence.
+
+def naive_bayes(obj_id, confidence, clas, massive_object_dictionary):
+    """Calculates the overarching prediction for the object class and returns the associated confidence.
 
     Args:
-      track_bbs_ids: A list of track ids.
-      confs: A list of confidences.
+    obj_id: The integer id of the object in question
+    confidence: Confidence in current class prediction
+    clas: Current class prediction
+    massive_object_dictionary: All previous predictions for all ids
 
     Returns:
-      A dictionary of object ID to a tuple of (final_class_prediction, final_confidence).
+    A tuple containing the predicted object class and the associated confidence as well as updated massive_object_dictionary
     """
+
+    # Extract the previous predicted classes and confidences for the given obj_id
+    prev_predicted_classes = massive_object_dictionary[obj_id][1]
+    prev_confidences = massive_object_dictionary[obj_id][0]
+
+
+    # Add the current predicted class and confidence to the previous predicted classes and confidences
+    prev_predicted_classes = np.append(prev_predicted_classes, clas)
+    prev_confidences = np.append(prev_confidences, confidence)
+
     
-    # Create a dictionary for current frame id predictions
-    bayes_predictions = {}
-    
-    # For each bounding box
-    for (xmin, ymin, xmax, ymax, obj_id), (confidence, class_index) in zip(track_bbs_ids, confs):
-        # If the object has been seen already
-        if obj_id in massive_object_dictionary.keys():
-            # Append current confidence and class index
-            massive_object_dictionary[obj_id][0].append(float(confidence))
-            massive_object_dictionary[obj_id][1].append(int(class_index))
-        # Otherwise create a new dict index for the id
-        else:
-            massive_object_dictionary[obj_id] = [[float(confidence)], [int(class_index)]]
+    # Get array of counts for each class
+    class_counts = np.unique(prev_predicted_classes, return_counts=True)[1]
+    # Normalize the values
+    prior_probabilities = class_counts / np.sum(class_counts)
 
-    # Now that we have processed all bounding boxes for this frame,
-    # calculate final predictions and add them to the bayes_predictions dictionary
-    for obj_id, (confidences, class_indices) in massive_object_dictionary.items():
-        class_predictions = class_indices
-        num_classes = len(set(class_predictions))
-        prior_probabilities = np.ones(num_classes) / num_classes
-        conditional_probabilities = {}
+    # print(class_counts)
+    # print(prior_probabilities)
 
-        for i in range(num_classes):
-            prior_probabilities[i] = len([j for j in class_predictions if j == i]) / len(class_predictions)
+    # Calculate the likelihood of each class prediction given the current class prediction.
+    class_likelihoods = np.zeros((len(prev_confidences), len(prior_probabilities)))
+    for i, predicted_class in enumerate(prev_predicted_classes):
+        for j, object_class in enumerate(prior_probabilities):
+            if predicted_class == object_class:
+                class_likelihoods[i, j] += prev_confidences[i]
+            
+    # print(class_likelihoods)
 
-        for i in range(num_classes):
-            conditional_probabilities[i] = {}
-            for j in range(num_classes):
-                count = 0
-                total = 0
-                for _, (confidences, class_indices) in massive_object_dictionary.items():
-                    if i in class_indices and j in class_indices:
-                        count += 1
-                    if i in class_indices:
-                        total += 1
+    # Apply Bayes' theorem to calculate the posterior probability of each class.
+    posterior_probabilities = np.prod(class_likelihoods, axis=0) * prior_probabilities
 
-                if total > 0:
-                    conditional_probabilities[i][j] = count / total
+    # Predict the final class with the highest posterior probability.
+    final_class_prediction = np.argmax(posterior_probabilities)
 
-        final_class_prediction = np.argmax(prior_probabilities)
-        final_confidence = prior_probabilities[final_class_prediction]
-        
-        # Add values to the bayes_predictions dict
-        bayes_predictions[obj_id] = final_class_prediction, final_confidence
-    print(bayes_predictions)
-    return bayes_predictions
+    # Calculate the confidence of the final prediction.
+    final_confidence = posterior_probabilities[final_class_prediction]
+
+    final_class_prediction = prev_predicted_classes.item(np.argmax(posterior_probabilities))
+
+    # Calculate the weighted average of the current confidence and the final confidence.
+    weighted_confidence = (confidence + final_confidence) / 2
+
+    return final_class_prediction, weighted_confidence, massive_object_dictionary
 
 
-
-
-
-# Define a function to generate random colors
+# Define a function to generate random colors for video
 def generate_random_colors(num_colors):
     random.seed(42)  # Set a seed for reproducibility
     colors = []
@@ -87,9 +81,8 @@ def generate_random_colors(num_colors):
         colors.append((r, g, b))
     return colors
 
-
 # Read the raw text from the file
-with open(r'D:\Coding\Thesis\sort\object_dict.txt', 'r') as file:
+with open(r'/home/taylordmark/Thesis/Sort/object_dict.txt', 'r') as file:
     raw_text = file.read()
 
 # Find the part of the text that represents the dictionary (remove variable name)
@@ -109,7 +102,7 @@ mot_tracker = sort.Sort()
 model = YOLO('yolov8n.pt')
 
 # Path to the image folder
-image_folder = Path(r"D:\Coding\Thesis\MOT17\train\MOT17-13-DPM\img1")
+image_folder = Path(r"/home/taylordmark/MOT17/train/MOT17-13-DPM/img1")
 
 # Get the dimensions of the first image in the folder
 first_image = next(image_folder.iterdir())
@@ -134,8 +127,10 @@ with open('detect_and_sort_results.csv', mode='w', newline='') as csv_file:
     writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
     writer.writeheader()
 
-    # For each image
-    for image_path in image_folder.iterdir():
+    # Sort image file paths based on filenames
+    image_paths = sorted(image_folder.iterdir(), key=lambda x: int(os.path.splitext(x.name)[0]))
+
+    for image_path in image_paths:
         image = cv2.imread(str(image_path))
         results = model.predict(image)[0]
         
@@ -153,23 +148,34 @@ with open('detect_and_sort_results.csv', mode='w', newline='') as csv_file:
                 
         # And update the tracker
         track_bbs_ids = mot_tracker.update(detections)
-       
-        # Using the updated tracker 
-        frame_id_predictions = naive_bayes(track_bbs_ids, confs, massive_object_dictionary)
 
-        for obj_id, (xmin, ymin, xmax, ymax, class_index, confidence) in frame_id_predictions.items():
-
+        # Naive Bayes should be called in here for each item
+        for (xmin, ymin, xmax, ymax, obj_id), (confidence, clas) in zip(track_bbs_ids, confs):
+            # If the object has been seen already
+            clas = int(clas)
+            if obj_id in massive_object_dictionary.keys():
+                clas2, confidence2, massive_object_dictionary = naive_bayes(obj_id, confidence, clas, massive_object_dictionary)
+                # print(f"{obj_id}: ({clas2}, {confidence2})")
+                # Append current confidence and class index
+                massive_object_dictionary[obj_id][0] = np.append(massive_object_dictionary[obj_id][0], confidence)
+                massive_object_dictionary[obj_id][1] = np.append(massive_object_dictionary[obj_id][1], clas)
+                confidence = confidence2
+                clas = clas2
+            # Otherwise create a new dict index for the id
+            else:
+                massive_object_dictionary[obj_id] = [np.array(confidence), np.array(clas)]
+            
             # Process values
-            class_index = int(class_index) + 1
             xmin, ymin, xmax, ymax = int(xmin), int(ymin), int(xmax), int(ymax)
-            class_name = f"Class {color_mapping[class_index]}"  # Cast class_index to int for class name
+            clas += 1
+            class_name = f"Class {color_mapping[clas]}"
 
             # Add box data to frame
             object_id_and_class = f"{class_name}: {confidence:.3f}"  # Concatenate Object ID and Confidence
-            color = colors[int(class_index)] if class_index < len(colors) else (0, 0, 0)
+            color = colors[int(clas)] if clas < len(colors) else (0, 0, 0)
             cv2.rectangle(image, (xmin, ymin), (xmax, ymax), color, 2)
             cv2.putText(image, object_id_and_class, (xmin, ymin - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-                            
+            
             # Write the tracking result to the CSV file
             writer.writerow({
                 'FrameNumber': image_path.stem,
@@ -179,7 +185,7 @@ with open('detect_and_sort_results.csv', mode='w', newline='') as csv_file:
                 'Width': xmax - xmin,
                 'Height': ymax - ymin,
                 'Confidence': float(confidence),
-                'Class': class_index
+                'Class': clas
             })
 
         # Write the frame with bounding boxes to the output video

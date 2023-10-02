@@ -18,7 +18,7 @@ def generate_random_colors(num_colors):
     return colors
 
 # Read the raw text from the file
-with open(r'D:\Coding\Thesis\sort\object_dict.txt', 'r') as file:
+with open(r'/home/taylordmark/Thesis/Sort/object_dict.txt', 'r') as file:
     raw_text = file.read()
 
 # Find the part of the text that represents the dictionary (remove variable name)
@@ -35,7 +35,7 @@ colors = generate_random_colors(len(color_mapping))  # Generate random colors ba
 model = YOLO('yolov8n.pt')
 
 # Path to the image folder
-image_folder = Path(r"D:\Coding\Thesis\MOT17\train\MOT17-13-DPM\img1")
+image_folder = Path(r"/home/taylordmark/MOT17/train/MOT17-13-DPM/img1")
 
 # Get the dimensions of the first image in the folder
 first_image = next(image_folder.iterdir())

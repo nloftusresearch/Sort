@@ -1,14 +1,9 @@
-# Read the raw text from the file
-with open(r'D:\Coding\Thesis\sort\object_dict.txt', 'r') as file:
-    raw_text = file.read()
+import numpy as np
 
-# Find the part of the text that represents the dictionary (remove variable name)
-start_index = raw_text.find('{')
-end_index = raw_text.rfind('}')
-dictionary_text = raw_text[start_index:end_index + 1]
+object_type_distributions = []
+for obj_class in range(5):
+    object_type_distributions.append(np.empty((1, 5)))
 
-# Use eval to convert the dictionary text into a dictionary
-color_mapping = eval(dictionary_text)
-
-# Now color_mapping is a dictionary
-print(color_mapping)
+for o in object_type_distributions:
+    print(o)
+    print()
