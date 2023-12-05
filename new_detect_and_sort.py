@@ -20,6 +20,26 @@ from keras.preprocessing.image import load_img, img_to_array
 import os
 import ast
 import json
+import pickle
+
+
+# Path to .txt files with classes to be included
+cls_path = "/remote_home/Thesis/Prebayesian/yolo-cls-list.txt"
+
+# Path to where checkpoint for current best model is saved
+checkpoint_path = "/remote_home/Thesis/Prebayesian/model_training/.5_LR_2x_CF_weightsonly"
+
+# Path to folder with images
+image_directory = "/remote_home/Thesis/BDD_Files/traffic"
+
+# Path for detections to be temporarily saved
+file_path = '/remote_home/Thesis/Prebayesian/frames_output.txt'
+
+# Define the output path for the parsed dictionary of object found in frame
+dict_output_path = '/remote_home/Thesis/Sort/parsed_data_dict.txt'
+
+
+
 
 gpus = tf.config.list_physical_devices('GPU')
 if gpus:
@@ -33,8 +53,6 @@ if gpus:
 
 max_iou = .2
 min_confidence = .1
-cls_path = "/remote_home/Thesis/Prebayesian/yolo-cls-list.txt"
-#cls_path = "yolo-cls-list.txt"
 
 #Load the class lists from text, if not specified, it gets all 80 classes
 if (cls_path == ""):
@@ -61,15 +79,19 @@ model = keras_cv.models.YOLOV8Detector(
 )
 
 
-checkpoint_path = "/remote_home/Thesis/Prebayesian/model_training/.5_LR_2x_CF_weightsonly"
-
 latest_checkpoint = tf.train.latest_checkpoint(checkpoint_path)
 model.load_weights(latest_checkpoint).expect_partial()
 
 def load_images(image_dir):
     images = []
 
-    for filename in os.listdir(image_dir):
+    # List all files in the directory
+    file_names = os.listdir(image_dir)
+
+    # Sort file names in ascending order
+    file_names.sort()
+
+    for filename in file_names:
         if filename.endswith(".jpg") or filename.endswith(".png"):
             image_path = os.path.join(image_dir, filename)
             image = tf.io.read_file(image_path)
@@ -80,11 +102,10 @@ def load_images(image_dir):
 
 # Load images from a directory
 print("loading images")
-images = load_images("/remote_home/Thesis/BDD_Files/traffic")
+images = load_images(image_directory)
 print("loaded images")
 
 # Open the file in write mode
-file_path = '/remote_home/Thesis/Prebayesian/frames_output.txt'
 
 with open(file_path, 'w') as file:
     for frame_number, img in enumerate(images):
@@ -171,12 +192,20 @@ if current_key is not None:
     data_dict[int(current_key)] = read_valuestring(value_str)
 
 
-# Define the file path
-file_path = '/remote_home/Thesis/Sort/parsed_data_dict.txt'
-
 # Save the dictionary to a text file using json.dump
-with open(file_path, 'w') as file:
-    json.dump(data_dict, file)
+with open(dict_output_path, 'w') as pickle_file:
+    pickle.dump(data, pickle_file)
 
-print(f"Dictionary saved to {file_path}")
+print(f"Dictionary saved to {dict_output_path}")
+
+# Load data from a pickle file
+with open('data.pkl', 'rb') as pickle_file:
+    loaded_frames_detections = pickle.load(pickle_file)
+
+print(loaded_frames_detections)
+
+
+
+
+
 
