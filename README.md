@@ -30,3 +30,6 @@ Below is the gist of how to instantiate and update SORT. See the ['__main__'](ht
     ...
     
  ### Current application
+ Use new_detect_and_sort.py on a folder of images. The program will load model, detect all objects in frames, save as a dictionary to a .txt file. Then data can be passed to SORT by selecting frame index from dict to retrieve data.
+
+ Then .py files A_probability from pdfs.py and B_probability from dists.py can be used to return a new predicted class using Naive Bayes probabilities.

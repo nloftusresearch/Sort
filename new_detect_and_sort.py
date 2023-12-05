@@ -172,7 +172,7 @@ if current_key is not None:
 
 
 # Define the file path
-file_path = '/remote_home/Thesis/Sort/parsed_data.txt'
+file_path = '/remote_home/Thesis/Sort/parsed_data_dict.txt'
 
 # Save the dictionary to a text file using json.dump
 with open(file_path, 'w') as file:
