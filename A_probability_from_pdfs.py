@@ -63,20 +63,20 @@ def get_class_probabilities(population_counts):
 
 # Define the labels for each class
 class_dictionary = {
-    0: "person",
-    1: "bus",
-    2: "car",
-    3: "truck",
-    4: "fire hydrant",
-    5: "motorcycle",
-    6: "airplane",
-    7: "train",
-    8: "boat",
-    9: "traffic light",
-    10: "street sign",
-    11: "stop sign",
-    12: "parking meter",
-    13: "bench"
+    0: "0",
+    1: "1",
+    2: "2",
+    3: "3",
+    4: "4",
+    5: "5",
+    6: "6",
+    7: "7",
+    8: "8",
+    9: "9",
+    10: "10",
+    11: "11",
+    12: "12",
+    13: "13"
 }
 
 
@@ -87,7 +87,7 @@ population_counts = {
     2: 24300,
     3: 11261,
     4: 1778,
-    5: 12345,  # Add other values as needed
+    5: 12345,
     6: 5432,
     7: 9876,
     8: 5678,
